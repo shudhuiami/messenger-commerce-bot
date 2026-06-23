@@ -10,29 +10,33 @@ Facebook Messenger auto-reply, product Q&A, and order-taking bot for Laravel e-c
 - Optional free Groq AI fallback (https://console.groq.com, no card required) for anything the rule-based matching can't parse — including a multilingual intent classifier so non-English customers asking "show me everything" or about a specific product still get the real product list / real product data, not just a conversational guess. AI is **never** used for order creation or pricing.
 - Admin-friendly: conversations and messages are stored in their own tables (`messenger_customers`, `messenger_conversations`, `messenger_messages`, `messenger_sessions`) so you can build your own admin UI on top.
 
-## Install (within this monorepo, as a path package)
+## Install (in a new project, via Packagist)
 
-Already wired into the root `composer.json` as a path repository. Run:
+```bash
+composer require shudhuiami/messenger-commerce-bot
+php artisan vendor:publish --tag=messenger-bot-config
+```
+
+Then implement the three contracts (see below) and point `config/messenger-bot.php`'s `bindings` array at your classes.
+
+## Install (within this monorepo, as a local path package)
+
+This is how GachGachra itself uses it — already wired into the root `composer.json` as a path repository, so it stays editable in lockstep with the app instead of requiring a tag/publish cycle for every change. Run:
 
 ```bash
 composer install
 ```
 
-## Install (in a fresh project)
-
-1. Copy the `packages/messenger-commerce-bot` directory into the new project.
-2. Add the path repository + requirement to the new project's `composer.json`:
-   ```json
-   "repositories": [
-       { "type": "path", "url": "packages/messenger-commerce-bot", "options": { "symlink": true } }
-   ],
-   "require": {
-       "shudhuiami/messenger-commerce-bot": "*"
-   }
-   ```
-3. `composer update`
-4. `php artisan vendor:publish --tag=messenger-bot-config`
-5. Implement the three contracts (see below), then point `config/messenger-bot.php`'s `bindings` array at your classes.
+If you want to develop the package itself this way in another project (instead of pulling the published version), copy the `packages/messenger-commerce-bot` directory in and add:
+```json
+"repositories": [
+    { "type": "path", "url": "packages/messenger-commerce-bot", "options": { "symlink": true } }
+],
+"require": {
+    "shudhuiami/messenger-commerce-bot": "@dev"
+}
+```
+then `composer update`, `php artisan vendor:publish --tag=messenger-bot-config`, implement the three contracts, point `config/messenger-bot.php`'s `bindings` array at your classes.
 6. Add to `.env`:
    ```
    MESSENGER_VERIFY_TOKEN=
