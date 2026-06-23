@@ -1,0 +1,25 @@
+{
+    "name": "shudhuiami/messenger-commerce-bot",
+    "description": "Facebook Messenger auto-reply, product Q&A, and order-taking bot for Laravel e-commerce apps. Schema-agnostic via host-implemented contracts.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/http": "^11.0|^12.0|^13.0",
+        "illuminate/queue": "^11.0|^12.0|^13.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Shudhuiami\\MessengerCommerceBot\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Shudhuiami\\MessengerCommerceBot\\MessengerCommerceBotServiceProvider"
+            ]
+        }
+    }
+}
