@@ -41,9 +41,10 @@ class MessengerBotService
         $session = $this->sessionFor($customer);
 
         return match ($session->current_step) {
-            'awaiting_quantity' => $this->handleQuantity($session, $text),
+            'awaiting_quantity' => $this->handleQuantity($customer, $session, $text),
+            'awaiting_name' => $this->handleName($customer, $session, $text),
             'awaiting_address' => $this->handleAddress($session, $text),
-            'awaiting_phone' => $this->handlePhone($session, $text),
+            'awaiting_phone' => $this->handlePhone($customer, $session, $text),
             'awaiting_confirmation' => $this->handleConfirmation($customer, $conversation, $session, $normalized),
             default => $this->handleIdle($session, $text, $normalized),
         };
@@ -98,7 +99,7 @@ class MessengerBotService
         return "Great choice: {$product->title} - {$product->price} BDT.\nHow many would you like to order? Please send a quantity.";
     }
 
-    private function handleQuantity(MessengerSession $session, string $text): string
+    private function handleQuantity(MessengerCustomer $customer, MessengerSession $session, string $text): string
     {
         if (! preg_match('/\d+/', $text, $m)) {
             return 'Please send a valid quantity, e.g. 2.';
@@ -121,9 +122,30 @@ class MessengerBotService
             return "Sorry, only {$product->stock} left in stock. Please send a smaller quantity.";
         }
 
+        if (empty($customer->name)) {
+            $session->update(['quantity' => $qty, 'current_step' => 'awaiting_name']);
+
+            return 'Got it. What is your full name for the order?';
+        }
+
         $session->update(['quantity' => $qty, 'current_step' => 'awaiting_address']);
 
         return 'Got it. What is your delivery address?';
+    }
+
+    private function handleName(MessengerCustomer $customer, MessengerSession $session, string $text): string
+    {
+        $name = trim($text);
+
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 100 || ! preg_match('/[a-zA-Z\x{0980}-\x{09FF}]/u', $name)) {
+            return 'Please send your full name for the order.';
+        }
+
+        $customer->update(['name' => $name]);
+
+        $session->update(['current_step' => 'awaiting_address']);
+
+        return 'Thanks. What is your delivery address?';
     }
 
     private function handleAddress(MessengerSession $session, string $text): string
@@ -137,7 +159,7 @@ class MessengerBotService
         return 'Thanks. What is your phone number?';
     }
 
-    private function handlePhone(MessengerSession $session, string $text): string
+    private function handlePhone(MessengerCustomer $customer, MessengerSession $session, string $text): string
     {
         $digits = preg_replace('/\D/', '', $text);
 
@@ -147,10 +169,10 @@ class MessengerBotService
 
         $session->update(['customer_phone' => trim($text), 'current_step' => 'awaiting_confirmation']);
 
-        return $this->orderSummary($session);
+        return $this->orderSummary($customer, $session);
     }
 
-    private function orderSummary(MessengerSession $session): string
+    private function orderSummary(MessengerCustomer $customer, MessengerSession $session): string
     {
         $product = $session->product_id ? $this->search->find($session->product_id) : null;
 
@@ -164,6 +186,7 @@ class MessengerBotService
 
         $lines = [
             'Order summary:',
+            "Name: {$customer->name}",
             "Product: {$product->title}",
             "Quantity: {$qty}",
             "Unit price: {$product->price} BDT",

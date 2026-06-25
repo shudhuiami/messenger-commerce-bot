@@ -6,7 +6,7 @@ Facebook Messenger auto-reply, product Q&A, and order-taking bot for Laravel e-c
 
 - Verifies and receives the official Messenger webhook (`GET`/`POST /messenger/webhook`).
 - Rule-based product Q&A: search by name/brand/category/description, "latest products", "cheapest X", numbered multi-match selection — all deterministic, no AI involved.
-- A guided order flow entirely in chat: product → quantity → delivery address → phone → confirmation summary → YES/CANCEL. Order creation always goes through **your** `OrderCreator` implementation — the package never computes prices or writes order rows itself.
+- A guided order flow entirely in chat: product → quantity → name (first order only) → delivery address → phone → confirmation summary → YES/CANCEL. Order creation always goes through **your** `OrderCreator` implementation — the package never computes prices or writes order rows itself.
 - Optional free Groq AI fallback (https://console.groq.com, no card required) for anything the rule-based matching can't parse — including a multilingual intent classifier so non-English customers asking "show me everything" or about a specific product still get the real product list / real product data, not just a conversational guess. AI is **never** used for order creation or pricing.
 - Admin-friendly: conversations and messages are stored in their own tables (`messenger_customers`, `messenger_conversations`, `messenger_messages`, `messenger_sessions`) so you can build your own admin UI on top.
 
