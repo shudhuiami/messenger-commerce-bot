@@ -1,7 +1,14 @@
 {
     "name": "shudhuiami/messenger-commerce-bot",
     "description": "Facebook Messenger auto-reply, product Q&A, and order-taking bot for Laravel e-commerce apps. Schema-agnostic via host-implemented contracts.",
-    "keywords": ["laravel", "facebook", "messenger", "chatbot", "e-commerce", "groq"],
+    "keywords": [
+        "laravel",
+        "facebook",
+        "messenger",
+        "chatbot",
+        "e-commerce",
+        "groq"
+    ],
     "homepage": "https://github.com/shudhuiami/messenger-commerce-bot",
     "type": "library",
     "license": "MIT",
@@ -13,15 +20,24 @@
     ],
     "require": {
         "php": "^8.3",
-        "illuminate/support": "^11.0|^12.0|^13.0",
-        "illuminate/database": "^11.0|^12.0|^13.0",
-        "illuminate/http": "^11.0|^12.0|^13.0",
-        "illuminate/queue": "^11.0|^12.0|^13.0"
+        "laravel/framework": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^11.0|^12.0"
     },
     "autoload": {
         "psr-4": {
             "Shudhuiami\\MessengerCommerceBot\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Shudhuiami\\MessengerCommerceBot\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
     },
     "extra": {
         "laravel": {

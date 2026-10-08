@@ -8,6 +8,7 @@ use Shudhuiami\MessengerCommerceBot\Contracts\OrderCreator;
 use Shudhuiami\MessengerCommerceBot\Contracts\ProductRepository;
 use Shudhuiami\MessengerCommerceBot\Contracts\StoreInfoResolver;
 use Shudhuiami\MessengerCommerceBot\Http\Controllers\MessengerWebhookController;
+use Shudhuiami\MessengerCommerceBot\Http\Middleware\VerifyMessengerSignature;
 
 class MessengerCommerceBotServiceProvider extends ServiceProvider
 {
@@ -44,9 +45,11 @@ class MessengerCommerceBotServiceProvider extends ServiceProvider
 
         $webhookPath = config('messenger-bot.webhook_path', 'messenger/webhook');
 
-        Route::middleware('web')->group(function () use ($webhookPath) {
-            Route::get($webhookPath, [MessengerWebhookController::class, 'verify']);
-            Route::post($webhookPath, [MessengerWebhookController::class, 'receive']);
-        });
+        // Registered outside the "web" group: Meta's server-to-server calls
+        // need no session or cookies, and skipping the group means no CSRF
+        // exemption is needed. POSTs are authenticated by signature instead.
+        Route::get($webhookPath, [MessengerWebhookController::class, 'verify']);
+        Route::post($webhookPath, [MessengerWebhookController::class, 'receive'])
+            ->middleware(VerifyMessengerSignature::class);
     }
 }

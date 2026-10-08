@@ -17,10 +17,12 @@ class MessengerService
         }
 
         $version = config('messenger-bot.graph_version', 'v19.0');
-        $url = "https://graph.facebook.com/{$version}/me/messages?access_token={$accessToken}";
+        // Token goes in the Authorization header, never the URL: connection
+        // errors echo the URL into exception messages, which we log below.
+        $url = "https://graph.facebook.com/{$version}/me/messages";
 
         try {
-            $response = Http::post($url, [
+            $response = Http::withToken($accessToken)->post($url, [
                 'recipient' => ['id' => $psid],
                 'message' => ['text' => $text],
             ]);

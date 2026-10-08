@@ -18,7 +18,9 @@ class MessengerWebhookController extends Controller
         $token = $request->query('hub_verify_token');
         $challenge = $request->query('hub_challenge');
 
-        if ($mode === 'subscribe' && $token === config('messenger-bot.verify_token')) {
+        $expected = config('messenger-bot.verify_token');
+
+        if ($mode === 'subscribe' && $expected && is_string($token) && hash_equals((string) $expected, $token)) {
             return response((string) $challenge, 200);
         }
 

@@ -10,24 +10,35 @@ Facebook Messenger auto-reply, product Q&A, and order-taking bot for Laravel e-c
 - Optional free Groq AI fallback (https://console.groq.com, no card required) for anything the rule-based matching can't parse — including a multilingual intent classifier so non-English customers asking "show me everything" or about a specific product still get the real product list / real product data, not just a conversational guess. AI is **never** used for order creation or pricing.
 - Admin-friendly: conversations and messages are stored in their own tables (`messenger_customers`, `messenger_conversations`, `messenger_messages`, `messenger_sessions`) so you can build your own admin UI on top.
 
-## Install (in a new project, via Packagist)
+## Install
 
 ```bash
 composer require shudhuiami/messenger-commerce-bot
 php artisan vendor:publish --tag=messenger-bot-config
+php artisan migrate
 ```
 
-Then implement the three contracts (see below) and point `config/messenger-bot.php`'s `bindings` array at your classes.
+Then:
 
-## Install (within this monorepo, as a local path package)
+1. Implement the three contracts (see below) and point `config/messenger-bot.php`'s `bindings` array at your classes.
+2. Add to `.env`:
+   ```
+   MESSENGER_VERIFY_TOKEN=
+   MESSENGER_APP_SECRET=
+   MESSENGER_PAGE_ACCESS_TOKEN=
+   MESSENGER_GRAPH_VERSION=v19.0
+   MESSENGER_PAGE_USERNAME=
+   GROQ_API_KEY=
+   GROQ_MODEL=llama-3.3-70b-versatile
+   ```
+   `MESSENGER_APP_SECRET` is your Meta app's App Secret (App settings → Basic). Every webhook POST is checked against Meta's `X-Hub-Signature-256` header with it; **without it the webhook rejects all deliveries**.
+3. Run a queue worker. Incoming messages are processed by a queued job, one message per customer at a time using a cache lock, so a double-tapped YES can't place two orders. Your cache store must support atomic locks and be shared by all workers (redis, database, memcached, dynamodb — not `array`, and `file` only on a single server). Set `MESSENGER_LOCK_STORE` to use a store other than your default.
 
-This is how GachGachra itself uses it — already wired into the root `composer.json` as a path repository, so it stays editable in lockstep with the app instead of requiring a tag/publish cycle for every change. Run:
+The webhook route is registered outside the `web` middleware group, so it needs no CSRF exemption.
 
-```bash
-composer install
-```
+### Developing the package locally
 
-If you want to develop the package itself this way in another project (instead of pulling the published version), copy the `packages/messenger-commerce-bot` directory in and add:
+To work on the package from inside another app instead of pulling the published version, add it as a path repository:
 ```json
 "repositories": [
     { "type": "path", "url": "packages/messenger-commerce-bot", "options": { "symlink": true } }
@@ -36,21 +47,13 @@ If you want to develop the package itself this way in another project (instead o
     "shudhuiami/messenger-commerce-bot": "@dev"
 }
 ```
-then `composer update`, `php artisan vendor:publish --tag=messenger-bot-config`, implement the three contracts, point `config/messenger-bot.php`'s `bindings` array at your classes.
-6. Add to `.env`:
-   ```
-   MESSENGER_VERIFY_TOKEN=
-   MESSENGER_PAGE_ACCESS_TOKEN=
-   MESSENGER_GRAPH_VERSION=v19.0
-   MESSENGER_PAGE_USERNAME=
-   GROQ_API_KEY=
-   GROQ_MODEL=llama-3.3-70b-versatile
-   ```
-7. Exempt the webhook from CSRF in `bootstrap/app.php`:
-   ```php
-   $middleware->validateCsrfTokens(except: ['messenger/webhook']);
-   ```
-8. `php artisan migrate`
+then `composer update`. Run the package's own tests with `composer install && composer test`.
+
+## Handing a conversation to a human
+
+When a customer sends `SUPPORT`, the conversation's status becomes `human_support`. From then on the bot stays silent: customer messages are still stored in `messenger_messages` for your team, but the bot sends no replies. To hand the conversation back to the bot, set its status to anything else (e.g. `active` or `closed`) from your admin UI.
+
+During the order flow, customers can also reply `NAME` at the confirmation step to change the name on the order.
 
 ## The three contracts you implement
 

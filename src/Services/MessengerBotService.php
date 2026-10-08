@@ -137,11 +137,22 @@ class MessengerBotService
     {
         $name = trim($text);
 
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 100 || ! preg_match('/[a-zA-Z\x{0980}-\x{09FF}]/u', $name)) {
+        // Any script's letters are fine; digits are not, which also catches an
+        // address or phone number sent one step early.
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 100 || ! preg_match('/\p{L}/u', $name) || preg_match('/\p{N}/u', $name)) {
             return 'Please send your full name for the order.';
         }
 
         $customer->update(['name' => $name]);
+
+        // Reached from the confirmation step (NAME to change it) or from a
+        // session that already has address and phone: go straight back to
+        // the summary instead of asking for them again.
+        if ($session->delivery_address && $session->customer_phone) {
+            $session->update(['current_step' => 'awaiting_confirmation']);
+
+            return $this->orderSummary($customer, $session);
+        }
 
         $session->update(['current_step' => 'awaiting_address']);
 
@@ -167,6 +178,12 @@ class MessengerBotService
             return 'Please send a valid phone number.';
         }
 
+        if (empty($customer->name)) {
+            $session->update(['customer_phone' => trim($text), 'current_step' => 'awaiting_name']);
+
+            return 'Thanks. What is your full name for the order?';
+        }
+
         $session->update(['customer_phone' => trim($text), 'current_step' => 'awaiting_confirmation']);
 
         return $this->orderSummary($customer, $session);
@@ -189,18 +206,16 @@ class MessengerBotService
             "Name: {$customer->name}",
             "Product: {$product->title}",
             "Quantity: {$qty}",
-            "Unit price: {$product->price} BDT",
+            ! is_null($product->oldPrice) && $product->oldPrice > $product->price
+                ? "Unit price: {$product->price} BDT (was {$product->oldPrice} BDT)"
+                : "Unit price: {$product->price} BDT",
         ];
-
-        if (! is_null($product->oldPrice) && $product->oldPrice > $product->price) {
-            $lines[] = "Discount price: {$product->price} BDT (was {$product->oldPrice} BDT)";
-        }
 
         $lines[] = "Total: {$total} BDT";
         $lines[] = "Delivery address: {$session->delivery_address}";
         $lines[] = "Phone: {$session->customer_phone}";
         $lines[] = '';
-        $lines[] = 'Reply YES to confirm or CANCEL to cancel.';
+        $lines[] = 'Reply YES to confirm, NAME to change your name, or CANCEL to cancel.';
 
         return implode("\n", $lines);
     }
@@ -219,13 +234,15 @@ class MessengerBotService
             return "Thank you! Your order #{$order->orderNumber} has been placed. Total: {$order->total} BDT. We'll contact you soon to confirm delivery.";
         }
 
-        if ($normalized === 'cancel') {
-            $session->reset();
-            $conversation->update(['status' => 'cancelled']);
-            return 'Your order has been cancelled.';
+        // CANCEL is handled globally in handle() before any step runs.
+
+        if (in_array($normalized, ['name', 'change name'], true)) {
+            $session->update(['current_step' => 'awaiting_name']);
+
+            return 'Sure. What name should we put on the order?';
         }
 
-        return 'Please reply YES to confirm your order or CANCEL to cancel.';
+        return 'Please reply YES to confirm your order, NAME to change your name, or CANCEL to cancel.';
     }
 
     private function handleProductQuery(MessengerSession $session, string $text): string
